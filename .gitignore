@@ -5,3 +5,5 @@
 /src/SAC/image/training_logs/
 /src/SAC/state/runs/
 /src/SAC/state/training_logs/
+*ckpt
+*pkl
