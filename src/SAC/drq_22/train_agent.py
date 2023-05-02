@@ -1,5 +1,5 @@
 import torch
-from SAC.deepmind_pendulum_swingup.environment.cartpole_swingup.pixels import make_env
+from src.SAC.environment.cartpole.pixels import make_env
 from agent import SAC_Agent
 import yaml
 import time
@@ -15,38 +15,38 @@ if __name__ == '__main__':
     score_list = []
     step_list = []
 
-while step_count < cfg["steps_limit"]:
-    start_time = time.time()
-    start_time = time.time()
-    obs = env.reset()
-    score, done = 0.0, False
-    episode_count += 1
-    while not done:
-        if step_count == cfg["steps_limit"]:
-            done = True
+    while step_count < cfg["steps_limit"]:
+        start_time = time.time()
+        start_time = time.time()
+        obs = env.reset()
+        score, done = 0.0, False
+        episode_count += 1
+        while not done:
+            if step_count == cfg["steps_limit"]:
+                done = True
 
-        action, log_prob = agent.choose_action(torch.FloatTensor(obs))
-        action = action.detach().cpu().numpy()
-        obs_, reward, done, _ = env.step(action)
+            action, log_prob = agent.choose_action(torch.FloatTensor(obs))
+            action = action.detach().cpu().numpy()
+            obs_, reward, done, _ = env.step(action)
 
-        agent.memory.put((obs, action, reward, obs_, done))
+            agent.memory.put((obs, action, reward, obs_, done))
 
-        score += reward
+            score += reward
 
-        obs = obs_
+            obs = obs_
 
-        if agent.memory.size() > agent.batch_size:
-            agent.learn()
+            if agent.memory.size() > agent.batch_size:
+                agent.learn()
 
-        step_count += 1
-    end_time = time.time()
-    total_time = end_time - start_time
-    print(
-        "Episode:{}, Step_Count:{} Avg_Score:{:.1f}, Episode_time:{:.2f}, Remaining_time: {:.1f}".format(episode_count,
-                                                                                                         step_count,
-                                                                                                         score,
-                                                                                                         total_time,
-                                                                                                         (cfg["steps_limit"] - step_count) * total_time / 125))
+            step_count += 1
+        end_time = time.time()
+        total_time = end_time - start_time
+        print(
+            "Episode:{}, Step_Count:{} Avg_Score:{:.1f}, Episode_time:{:.2f}, Remaining_time: {:.1f}".format(episode_count,
+                                                                                                             step_count,
+                                                                                                             score,
+                                                                                                             total_time,
+                                                                                                             (cfg["steps_limit"] - step_count) * total_time / 125))
 
-    agent.writer.add_scalar("episode_return", score, step_count)
-    agent.writer.add_scalar("episode_time", total_time, episode_count)
+        agent.writer.add_scalar("episode_return", score, step_count)
+        agent.writer.add_scalar("episode_time", total_time, episode_count)

@@ -53,6 +53,13 @@ class SAC_Agent:
         self.Q2 = QNetwork(self.state_dim, self.action_dim, self.lr_q).to(self.DEVICE)
         self.Q2_target = QNetwork(self.state_dim, self.action_dim, self.lr_q).to(self.DEVICE)
 
+        self.Q1_optimizer = optim.Adam(list(self.Q1.parameters()) + list(self.critic_encoder.encoder.parameters()),
+                                       lr=self.lr_q)
+        self.Q2_optimizer = optim.Adam(list(self.Q2.parameters()) + list(self.critic_encoder.encoder.parameters()),
+                                       lr=self.lr_q)
+        self.PI_optimizer = optim.Adam(list(self.PI.parameters()) + list(self.policy_encoder.encoder.parameters()),
+                                       lr=self.lr_pi)
+
         self.Q1_target.load_state_dict(self.Q1.state_dict())
         self.Q2_target.load_state_dict(self.Q2.state_dict())
 
@@ -79,21 +86,22 @@ class SAC_Agent:
         td_target = self.calc_target((o, a, r, o_, d))
 
         #### Q1 train ####
-        self.Q1.optimizer.zero_grad()
+        self.Q1_optimizer.zero_grad()
         q_o = self.critic_encoder.encode(o, detach_encoder=False)
         q1_loss = F.mse_loss(self.Q1(q_o, a), td_target)
         # retain the gradients in the linear layer of the encoder
-        q1_loss.mean().backward(retain_graph=True)
+        q1_loss.mean().backward()
         # nn.utils.clip_grad_norm_(self.q1.parameters(), 1.0)
-        self.Q1.optimizer.step()
+        self.Q1_optimizer.step()
         #### Q1 train ####
 
         #### Q2 train ####
-        self.Q2.optimizer.zero_grad()
+        self.Q2_optimizer.zero_grad()
+        q_o = self.critic_encoder.encode(o, detach_encoder=False)
         q2_loss = F.mse_loss(self.Q2(q_o, a), td_target)
         q2_loss.mean().backward()
         # nn.utils.clip_grad_norm_(self.q2.parameters(), 1.0)
-        self.Q2.optimizer.step()
+        self.Q2_optimizer.step()
         #### Q2 train ####
 
         #### pi train ####
@@ -103,10 +111,10 @@ class SAC_Agent:
         q1, q2 = self.Q1(pi_o, actions), self.Q2(pi_o, actions)
         q = torch.min(q1, q2)
         pi_loss = -(q + entropy)  # for gradient ascent
-        self.PI.optimizer.zero_grad()
+        self.PI_optimizer.zero_grad()
         pi_loss.mean().backward()
         # nn.utils.clip_grad_norm_(self.pi.parameters(), 2.0)
-        self.PI.optimizer.step()
+        self.PI_optimizer.step()
         #### pi train ####
 
         #### alpha train ####

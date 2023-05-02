@@ -24,7 +24,6 @@ class PolicyNetwork(nn.Module):
         self.action_scale = (self.max_action - self.min_action) / 2.0
         self.action_bias = (self.max_action + self.min_action) / 2.0
 
-        self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
 
     def forward(self, x):
         x = F.leaky_relu(self.fc_1(x))

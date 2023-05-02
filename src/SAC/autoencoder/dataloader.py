@@ -1,7 +1,7 @@
 import torch as T
 from torchvision.transforms import transforms
 
-import SAC.deepmind_pendulum_swingup.AutoEncoder.buffer as buffer
+import src.SAC.autoencoder.buffer as buffer
 from torch.utils.data import DataLoader, Dataset
 import pytorch_lightning as pl
 

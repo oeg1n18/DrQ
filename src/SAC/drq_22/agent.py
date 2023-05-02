@@ -6,13 +6,14 @@ from torch import optim
 from buffer import ReplayBuffer
 from networks import PolicyNetwork, QNetwork
 from torch.utils.tensorboard import SummaryWriter
-from SAC.deepmind_pendulum_swingup.AutoEncoder.AutoEncoder import AutoencoderModule
+from src.SAC.autoencoder.AutoEncoder import AutoencoderModule
 import torchvision
 import pytorch_lightning as pl
 
+
 class SAC_Agent:
     def __init__(self, cfg):
-        self.state_dim = cfg["state_dim"] # [cos(theta), sin(theta), theta_dot]
+        self.state_dim = cfg["state_dim"]  # [cos(theta), sin(theta), theta_dot]
         self.action_dim = cfg["action_dim"]  # [torque] in[-2,2]
         self.lr_pi = cfg["policy_lr"]
         self.lr_q = cfg["critic_lr"]
@@ -34,21 +35,22 @@ class SAC_Agent:
         self.log_alpha.requires_grad = True
         self.log_alpha_optimizer = optim.Adam([self.log_alpha], lr=self.lr_alpha)
 
-        self.augmentation = torchvision.transforms.RandomCrop(size=(84,84), padding=4, padding_mode='edge')
+        self.augmentation = torchvision.transforms.RandomCrop(size=(84, 84), padding=4, padding_mode='edge')
 
         ### ================= DrQ Averaging ==================
         self.K, self.M = 2, 2
 
-        self.critic_encoder = AutoencoderModule.load_from_checkpoint("/home/ollie/Documents/Github/DeepLearningDrQ/SAC/deepmind_pendulum_swingup/AutoEncoder/models/epoch=17-step=3528.ckpt", frame_size=(84,84),
-                                                              latent_dim=50,
-                                                              frame_stack=8).to(self.DEVICE)
+        self.critic_encoder = AutoencoderModule.load_from_checkpoint(
+            "/home/ollie/Documents/Github/DeepLearningDrQ/SAC/deepmind_pendulum_swingup/AutoEncoder/models/epoch=17-step=3528.ckpt",
+            frame_size=(84, 84),
+            latent_dim=50,
+            frame_stack=8).to(self.DEVICE)
 
         self.policy_encoder = AutoencoderModule.load_from_checkpoint(
             "/home/ollie/Documents/Github/DeepLearningDrQ/SAC/deepmind_pendulum_swingup/AutoEncoder/models/epoch=17-step=3528.ckpt",
             frame_size=(84, 84),
             latent_dim=50,
             frame_stack=8).to(self.DEVICE)
-
 
         self.PI = PolicyNetwork(self.state_dim, self.action_dim, self.lr_pi).to(self.DEVICE)
         self.Q1 = QNetwork(self.state_dim, self.action_dim, self.lr_q).to(self.DEVICE)
@@ -74,7 +76,8 @@ class SAC_Agent:
                 s_prime_aug = self.critic_encoder.encode(s_prime_aug, detach_encoder=True)
                 a_prime_aug, log_prob_prime_aug = self.PI.sample(s_prime_aug)
                 entropy = - self.log_alpha.exp() * log_prob_prime_aug
-                q1_target, q2_target = self.Q1_target(s_prime_aug, a_prime_aug), self.Q2_target(s_prime_aug, a_prime_aug)
+                q1_target, q2_target = self.Q1_target(s_prime_aug, a_prime_aug), self.Q2_target(s_prime_aug,
+                                                                                                a_prime_aug)
                 q_target = torch.min(q1_target, q2_target)
                 targets.append(r + self.gamma * done * (q_target + entropy))
             if len(targets) >= 2:
@@ -87,7 +90,6 @@ class SAC_Agent:
         o, a, r, o_, d = self.memory.sample(self.batch_size)
         td_target = self.calc_target((o, a, r, o_, d))
 
-
         #### Q1 train ####
         self.Q1.optimizer.zero_grad()
         q1_losses = []
@@ -96,7 +98,7 @@ class SAC_Agent:
             q_o = self.critic_encoder.encode(o_aug, detach_encoder=False)
             q1_losses.append(F.mse_loss(self.Q1(q_o, a), td_target))
         q1_loss = torch.mean(torch.stack(q1_losses), dim=0)
-        # retain the gradients in the linear layer of the encoder
+        # retain the gradients in the encoder
         q1_loss.mean().backward(retain_graph=True)
         # nn.utils.clip_grad_norm_(self.q1.parameters(), 1.0)
         self.Q1.optimizer.step()
@@ -106,24 +108,23 @@ class SAC_Agent:
                 self.writer.add_scalar("drq/Q1_loss_var", var, self.train_counter)
         #### Q1 train ####
 
-
         #### Q2 train ####
         self.Q2.optimizer.zero_grad()
         q2_losses = []
         for i in range(self.M):
             o_aug = self.augmentation(o)
-            q_o = self.critic_encoder.encode(o)
+            q_o = self.critic_encoder.encode(o_aug)
             q2_losses.append(F.mse_loss(self.Q2(q_o, a), td_target))
         q2_loss = torch.mean(torch.stack(q2_losses), dim=0)
         q2_loss.mean().backward()
-        # nn.utils.clip_grad_norm_(self.q2.parameters(), 1.0)
+
         self.Q2.optimizer.step()
+        #### Q2 train ####
+
         with torch.no_grad():
             if len(q1_losses) >= 2:
                 var = F.mse_loss(q1_losses[0], q1_losses[1])
                 self.writer.add_scalar("drq/Q2_loss_var", var, self.train_counter)
-        #### Q2 train ####
-
 
         #### pi train ####
         pi_o = self.policy_encoder.encode(o, detach_encoder=True)
@@ -151,7 +152,6 @@ class SAC_Agent:
         for param_target, param in zip(self.Q2_target.parameters(), self.Q2.parameters()):
             param_target.data.copy_(param_target.data * (1.0 - self.tau) + param.data * self.tau)
         #### Q1, Q2 soft-update ####
-
 
         ### Keep Encoder Conv Weights the same but allow the critic to update them###
         copy_keys = ['encoder.conv1.weight', 'encoder.conv1.bias', 'encoder.conv2.weight', 'encoder.conv2.bias',

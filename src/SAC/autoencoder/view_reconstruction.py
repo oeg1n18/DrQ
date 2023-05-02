@@ -1,5 +1,6 @@
-from SAC.deepmind_pendulum_swingup.AutoEncoder.AutoEncoder import AutoencoderModule
-from SAC.deepmind_pendulum_swingup.AutoEncoder.dataloader import ObsDataset
+
+from src.SAC.autoencoder.AutoEncoder import AutoencoderModule
+from src.SAC.autoencoder.dataloader import ObsDataset
 import matplotlib.pyplot as plt
 import numpy as np
 import torch as T
@@ -20,24 +21,23 @@ obs_ = model.decode(z)
 obs_ = obs_.detach().cpu().numpy()[0]
 obs = obs.numpy()
 
-fig, ax = plt.subplots(3, 2, figsize=(10,15))
+fig, ax = plt.subplots(2, 2, figsize=(10,10))
 
 ax[0][0].imshow(obs[0], cmap='gray')
 ax[0][0].set_title("Target Channel 0", fontsize=18)
 ax[1][0].imshow(obs[1], cmap='gray')
 ax[1][0].set_title("Target Channel 1", fontsize=18)
-ax[2][0].imshow(obs[2], cmap='gray')
-ax[2][0].set_title("Target Channel 2", fontsize=18)
+
 
 
 ax[0][1].imshow(obs_[0], cmap='gray')
 ax[0][1].set_title("Reconstructed Channel 0", fontsize=18)
 ax[1][1].imshow(obs_[1], cmap='gray')
 ax[1][1].set_title("Reconstructed Channel 1", fontsize=18)
-ax[2][1].imshow(obs_[2], cmap='gray')
-ax[2][1].set_title("Reconstructed Channel 2", fontsize=18)
 
-plt.tight_layout(h_pad=3)
+
+
 fig.suptitle("Autoencoder State Reconstructions", fontsize=25)
+plt.tight_layout(h_pad=3)
 plt.subplots_adjust(top=0.9)
 plt.show()
