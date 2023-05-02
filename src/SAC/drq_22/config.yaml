@@ -1,0 +1,19 @@
+chkpt_dir: 'training_logs'
+log_freq: 50
+retrain: True
+env_name: cartpole
+task_name: swingup
+steps_limit: 100000
+
+state_dim: 400
+action_dim: 1
+
+policy_lr: 0.001
+critic_lr: 0.001
+discount: 0.98
+batch_size: 128
+replay_size: 100000
+soft_target_update: 0.005
+device: cuda
+lr_alpha: 0.005
+init_alpha: 0.01
