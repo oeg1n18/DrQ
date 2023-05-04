@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from src.SAC.autoencoder.AutoEncoder import AutoencoderModule
 import torchvision
 import pytorch_lightning as pl
-
+import time
 
 class SAC_Agent:
     def __init__(self, cfg):
@@ -58,6 +58,10 @@ class SAC_Agent:
         self.Q2 = QNetwork(self.state_dim, self.action_dim, self.lr_q).to(self.DEVICE)
         self.Q2_target = QNetwork(self.state_dim, self.action_dim, self.lr_q).to(self.DEVICE)
 
+        self.Q1_optimizer = optim.Adam(self.Q1.parameters(), lr=self.lr_q)
+        self.Q2_optimizer = optim.Adam(self.Q2.parameters(), lr=self.lr_q)
+        self.PI_optimizer = optim.Adam(self.PI.parameters(), lr=self.lr_pi)
+
         self.Q1_target.load_state_dict(self.Q1.state_dict())
         self.Q2_target.load_state_dict(self.Q2.state_dict())
 
@@ -91,25 +95,25 @@ class SAC_Agent:
         td_target = self.calc_target((o, a, r, o_, d))
 
         #### Q1 train ####
-        self.Q1.optimizer.zero_grad()
+        self.Q1_optimizer.zero_grad()
         q1_losses = []
         for i in range(self.M):
             o_aug = self.augmentation(o)
             q_o = self.critic_encoder.encode(o_aug, detach_encoder=False)
             q1_losses.append(F.mse_loss(self.Q1(q_o, a), td_target))
         q1_loss = torch.mean(torch.stack(q1_losses), dim=0)
-        # retain the gradients in the encoder
-        q1_loss.mean().backward(retain_graph=True)
-        # nn.utils.clip_grad_norm_(self.q1.parameters(), 1.0)
-        self.Q1.optimizer.step()
+        q1_loss.mean().backward()
+        self.Q1_optimizer.step()
+        #### Q1 train ####
+
+
         with torch.no_grad():
             if len(q1_losses) >= 2:
                 var = F.mse_loss(q1_losses[0], q1_losses[1])
                 self.writer.add_scalar("drq/Q1_loss_var", var, self.train_counter)
-        #### Q1 train ####
 
         #### Q2 train ####
-        self.Q2.optimizer.zero_grad()
+        self.Q2_optimizer.zero_grad()
         q2_losses = []
         for i in range(self.M):
             o_aug = self.augmentation(o)
@@ -117,8 +121,7 @@ class SAC_Agent:
             q2_losses.append(F.mse_loss(self.Q2(q_o, a), td_target))
         q2_loss = torch.mean(torch.stack(q2_losses), dim=0)
         q2_loss.mean().backward()
-
-        self.Q2.optimizer.step()
+        self.Q2_optimizer.step()
         #### Q2 train ####
 
         with torch.no_grad():
@@ -133,10 +136,9 @@ class SAC_Agent:
         q1, q2 = self.Q1(pi_o, actions), self.Q2(pi_o, actions)
         q = torch.min(q1, q2)
         pi_loss = -(q + entropy)  # for gradient ascent
-        self.PI.optimizer.zero_grad()
+        self.PI_optimizer.zero_grad()
         pi_loss.mean().backward()
-        # nn.utils.clip_grad_norm_(self.pi.parameters(), 2.0)
-        self.PI.optimizer.step()
+        self.PI_optimizer.step()
         #### pi train ####
 
         #### alpha train ####
@@ -154,6 +156,7 @@ class SAC_Agent:
         #### Q1, Q2 soft-update ####
 
         ### Keep Encoder Conv Weights the same but allow the critic to update them###
+        """
         copy_keys = ['encoder.conv1.weight', 'encoder.conv1.bias', 'encoder.conv2.weight', 'encoder.conv2.bias',
                      'encoder.conv3.weight', 'encoder.conv3.bias', 'encoder.conv4.weight', 'encoder.conv4.bias']
         target_dict = self.policy_encoder.state_dict()
@@ -161,6 +164,8 @@ class SAC_Agent:
             if key in copy_keys:
                 target_dict[key] = value
         self.policy_encoder.load_state_dict(target_dict)
+        """
+
 
         if self.train_counter % self.log_freq == 0:
             self.writer.add_scalar("agent/Loss/q1_loss", q1_loss.detach().cpu().mean(), self.train_counter)

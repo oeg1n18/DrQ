@@ -8,7 +8,7 @@ from networks import PolicyNetwork, QNetwork
 from torch.utils.tensorboard import SummaryWriter
 from src.SAC.autoencoder.AutoEncoder import AutoencoderModule
 import pytorch_lightning as pl
-
+import time
 
 class SAC_Agent:
     def __init__(self, cfg):
@@ -53,15 +53,17 @@ class SAC_Agent:
         self.Q2 = QNetwork(self.state_dim, self.action_dim, self.lr_q).to(self.DEVICE)
         self.Q2_target = QNetwork(self.state_dim, self.action_dim, self.lr_q).to(self.DEVICE)
 
-        self.Q1_optimizer = optim.Adam(list(self.Q1.parameters()) + list(self.critic_encoder.encoder.parameters()),
+        self.Q1_optimizer = optim.Adam(self.Q1.parameters(),
                                        lr=self.lr_q)
-        self.Q2_optimizer = optim.Adam(list(self.Q2.parameters()) + list(self.critic_encoder.encoder.parameters()),
+        self.Q2_optimizer = optim.Adam(self.Q2.parameters(),
                                        lr=self.lr_q)
-        self.PI_optimizer = optim.Adam(list(self.PI.parameters()) + list(self.policy_encoder.encoder.parameters()),
+        self.PI_optimizer = optim.Adam(self.PI.parameters(),
                                        lr=self.lr_pi)
 
         self.Q1_target.load_state_dict(self.Q1.state_dict())
         self.Q2_target.load_state_dict(self.Q2.state_dict())
+
+        self.times = []
 
     def choose_action(self, s):
         with torch.no_grad():
@@ -91,7 +93,6 @@ class SAC_Agent:
         q1_loss = F.mse_loss(self.Q1(q_o, a), td_target)
         # retain the gradients in the linear layer of the encoder
         q1_loss.mean().backward()
-        # nn.utils.clip_grad_norm_(self.q1.parameters(), 1.0)
         self.Q1_optimizer.step()
         #### Q1 train ####
 
@@ -100,7 +101,6 @@ class SAC_Agent:
         q_o = self.critic_encoder.encode(o, detach_encoder=False)
         q2_loss = F.mse_loss(self.Q2(q_o, a), td_target)
         q2_loss.mean().backward()
-        # nn.utils.clip_grad_norm_(self.q2.parameters(), 1.0)
         self.Q2_optimizer.step()
         #### Q2 train ####
 
@@ -113,7 +113,6 @@ class SAC_Agent:
         pi_loss = -(q + entropy)  # for gradient ascent
         self.PI_optimizer.zero_grad()
         pi_loss.mean().backward()
-        # nn.utils.clip_grad_norm_(self.pi.parameters(), 2.0)
         self.PI_optimizer.step()
         #### pi train ####
 

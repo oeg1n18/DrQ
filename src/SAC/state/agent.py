@@ -5,7 +5,7 @@ from torch import optim
 from src.SAC.state.buffer import ReplayBuffer
 from src.SAC.state.networks import PolicyNetwork, QNetwork
 from torch.utils.tensorboard import SummaryWriter
-
+import time
 class SAC_Agent:
     def __init__(self, cfg):
         self.state_dim = cfg["state_dim"] # [cos(theta), sin(theta), theta_dot]
@@ -55,6 +55,7 @@ class SAC_Agent:
         return target
 
     def learn(self):
+
         self.train_counter += 1
         o, a, r, o_, d = self.memory.sample(self.batch_size)
         td_target = self.calc_target((o, a, r, o_, d))
