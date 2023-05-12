@@ -9,20 +9,17 @@ import numpy as np
 from collections import deque
 import kornia.augmentation as aug
 
-
 class Intensity(nn.Module):
     def __init__(self, scale):
         super().__init__()
         self.scale = scale
-
     def forward(self, x):
         r = T.randn((x.size(0), 1, 1, 1), device=x.device)
         noise = 1.0 + (self.scale * r.clamp(-2.0, 2.0))
         return x * noise
 
-
 class DuelingDeepQNetwork(nn.Module):
-    def __init__(self, lr, n_actions, name, input_dims, chkpt_dir):
+    def __init__(self, lr, n_actions, name, input_dims,chkpt_dir):
         super(DuelingDeepQNetwork, self).__init__()
         self.checkpoint_dir = chkpt_dir
         self.checkpoint_file = os.path.join(self.checkpoint_dir, name)
@@ -41,12 +38,12 @@ class DuelingDeepQNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, observation):
-        observation = T.div(observation, 255)
+        observation = T.div(observation,255)
         observation = observation.view(-1, 4, 84, 84)
         observation = F.relu(self.conv1(observation))
         observation = F.relu(self.conv2(observation))
         observation = F.relu(self.conv3(observation))
-        observation = observation.view(-1, 64 * 7 * 7)
+        observation = observation.view(-1,64 * 7 * 7)
         observation = F.relu(self.fc1(observation))
         V = self.V(observation)
         A = self.A(observation)
@@ -61,7 +58,6 @@ class DuelingDeepQNetwork(nn.Module):
         print('... loading checkpoint ...')
         self.load_state_dict(T.load(self.checkpoint_file))
 
-
 class EpsilonGreedy():
     def __init__(self):
         self.eps = 1.0
@@ -69,12 +65,11 @@ class EpsilonGreedy():
         self.eps_final = 0.1
 
     def update_eps(self):
-        self.eps = max(self.eps - (self.eps - self.eps_final) / self.steps, self.eps_final)
-
+        self.eps = max(self.eps - (self.eps - self.eps_final) / self.steps,self.eps_final)
 
 class Agent():
-    def __init__(self, discount, lr, input_dims, batch_size, n_actions,
-                 max_mem_size=1000000, replace=1, mode="default"):
+    def __init__(self, discount, lr, input_dims,batch_size,n_actions,
+                 max_mem_size = 1000000, replace=1,mode="default"):
 
         self.epsilon = EpsilonGreedy()
         self.lr = lr
@@ -91,28 +86,28 @@ class Agent():
         self.eval_mode = False
         self.mode = mode
 
-        self.memory = ExperienceReplay(input_dims, max_mem_size, self.batch_size)
+        self.memory = ExperienceReplay(input_dims,max_mem_size,self.batch_size)
 
         self.q_eval = DuelingDeepQNetwork(self.lr, self.n_actions,
-                                          input_dims=self.input_dims,
-                                          name='lunar_lander_dueling_ddqn_q_eval',
-                                          chkpt_dir=self.chkpt_dir)
+                                   input_dims=self.input_dims,
+                                   name='lunar_lander_dueling_ddqn_q_eval',
+                                   chkpt_dir=self.chkpt_dir)
 
         self.q_next = DuelingDeepQNetwork(self.lr, self.n_actions,
-                                          input_dims=self.input_dims,
-                                          name='lunar_lander_dueling_ddqn_q_next',
-                                          chkpt_dir=self.chkpt_dir)
+                                   input_dims=self.input_dims,
+                                   name='lunar_lander_dueling_ddqn_q_next',
+                                   chkpt_dir=self.chkpt_dir)
 
-        self.n_states = deque([], self.n)
-        self.n_rewards = deque([], self.n)
-        self.n_actions = deque([], self.n)
+        self.n_states = deque([],self.n)
+        self.n_rewards = deque([],self.n)
+        self.n_actions = deque([],self.n)
 
         self.random_shift = nn.Sequential(nn.ReplicationPad2d(4), aug.RandomCrop((84, 84)))
         self.intensity = Intensity(scale=0.05)
 
     def choose_action(self, observation):
         if np.random.random() > self.epsilon.eps or self.eval_mode:
-            state = T.tensor(np.array([observation]), dtype=T.float).to(self.q_eval.device)
+            state = T.tensor(np.array([observation]),dtype=T.float).to(self.q_eval.device)
             _, advantage = self.q_eval.forward(state)
             action = T.argmax(advantage).item()
         else:
@@ -122,7 +117,7 @@ class Agent():
 
     def store_transition(self, state, action, reward, state_, done):
         self.n_step(state, action, reward, state_, done)
-        # self.memory.store_transition(state, action, reward, state_, done)
+        #self.memory.store_transition(state, action, reward, state_, done)
 
     def n_step(self, state, action, reward, state_, done):
         self.n_states.append(state)
@@ -133,8 +128,8 @@ class Agent():
             fin_reward = 0
             for i in range(self.n):
                 fin_reward += self.n_rewards.index(i) * (self.gamma ** i)
-            self.memory.store_transition(self.n_states.index(0), self.n_actions.index(0), fin_reward, \
-                                         state_, done)
+            self.memory.store_transition(self.n_states.index(0),self.n_actions.index(0),fin_reward, \
+                                         state_,done)
 
         if done:
             self.n_states = deque([], self.n)
@@ -172,15 +167,16 @@ class Agent():
 
     def learn(self):
 
+
         if self.memory.mem_cntr < self.min_sampling_size:
             return
 
         self.q_eval.optimizer.zero_grad()
 
-        # if self.replace_target_cnt > 1:
+        #if self.replace_target_cnt > 1:
         self.replace_target_network()
 
-        states, actions, rewards, new_states, dones = self.memory.sample_memory()
+        states,actions,rewards,new_states,dones = self.memory.sample_memory()
 
         states = T.tensor(states).to(self.q_eval.device)
         rewards = T.tensor(rewards).to(self.q_eval.device)
@@ -190,7 +186,6 @@ class Agent():
 
         indices = np.arange(self.batch_size)
 
-        ##REMOVE THIS - DrQ
         if self.mode == "Baseline":
             states_aug = states
             states_aug_ = states_
@@ -203,6 +198,7 @@ class Agent():
         elif self.mode == "Intensity":
             states_aug = self.intensity(states.float()).to(T.uint8)
             states_aug_ = self.intensity(states_.float()).to(T.uint8)
+
         ##########
 
         V_s, A_s = self.q_eval.forward(states_aug)
@@ -212,19 +208,19 @@ class Agent():
         V_s_eval, A_s_eval = self.q_eval.forward(states_)
 
         q_pred = T.add(V_s,
-                       (A_s - A_s.mean(dim=1, keepdim=True)))[indices, actions]
+                        (A_s - A_s.mean(dim=1, keepdim=True)))[indices, actions]
         q_next = T.add(V_s_,
-                       (A_s_ - A_s_.mean(dim=1, keepdim=True)))
+                        (A_s_ - A_s_.mean(dim=1, keepdim=True)))
 
-        q_eval = T.add(V_s_eval, (A_s_eval - A_s_eval.mean(dim=1, keepdim=True)))
+        q_eval = T.add(V_s_eval, (A_s_eval - A_s_eval.mean(dim=1,keepdim=True)))
 
         max_actions = T.argmax(q_eval, dim=1)
 
         q_next[dones] = 0.0
-        q_target = rewards + (self.gamma ** self.n) * q_next[indices, max_actions]
+        q_target = rewards + (self.gamma ** self.n)*q_next[indices, max_actions]
 
         loss = self.q_eval.loss(q_target, q_pred).to(self.q_eval.device)
-
+        
         loss.backward()
         T.nn.utils.clip_grad_norm_(self.q_eval.parameters(), 10)
         self.q_eval.optimizer.step()
@@ -233,4 +229,4 @@ class Agent():
         self.epsilon.update_eps()
 
 
-
+        
