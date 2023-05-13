@@ -1,13 +1,16 @@
+
 import torch
 from src.SAC.environment.cartpole.state import make_env
-from agent import SAC_Agent
+from src.SAC.state.agent import SAC_Agent
 import yaml
 import time
+import os
 
 
 with open('config.yaml', 'r') as file:
     cfg = yaml.load(file, Loader=yaml.FullLoader)
 
+print(os.getcwd())
 
 if __name__ == '__main__':
     env = make_env()
