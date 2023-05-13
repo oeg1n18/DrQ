@@ -1,9 +1,7 @@
 /src/SAC/autoencoder/models/
 /src/SAC/autoencoder/data/
 /src/SAC/autoencoder/tb_logs/
-/src/SAC/image/runs/
 /src/SAC/image/training_logs/
-/src/SAC/state/runs/
 /src/SAC/state/training_logs/
 *ckpt
 *pkl

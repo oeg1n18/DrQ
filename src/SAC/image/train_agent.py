@@ -3,7 +3,7 @@ from src.SAC.environment.cartpole.pixels import make_env
 from agent import SAC_Agent
 import yaml
 import time
-
+import os
 
 with open('config.yaml', 'r') as file:
     cfg = yaml.load(file, Loader=yaml.FullLoader)
