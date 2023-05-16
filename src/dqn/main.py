@@ -5,16 +5,13 @@ from gym.wrappers import AtariPreprocessing
 import time
 from copy import deepcopy
 
-#Main.py && Main.py -double True && Main.py -per True && Main.py -double True -per True
-
 if __name__ == '__main__':
 
-    #from NDDDQN_Agent import Agent
     from NDDDQN_Agent import Agent
     modes = ["Baseline","DrQ"]
-    games = ["Alien","Amidar","Assault","Asterix","BankHeist","BattleZone","Boxing","ChopperCommand","CrazyClimber",\
+    games = ["Alien","Amidar","Assault","Asterix","BankHeist","BattleZone","Boxing","Breakout","ChopperCommand","CrazyClimber",\
              "DemonAttack","Freeway","Frostbite","Gopher","Hero","Jamesbond","Kangaroo","Krull","KungFuMaster",\
-             "MsPacman","PrivateEye","Qbert","RoadRunner","Seaquest","UpNDown"]
+             "MsPacman","Pong","PrivateEye","Qbert","RoadRunner","Seaquest","UpNDown"]
     for game in games:
         for i in modes:
             for runs in range(5):

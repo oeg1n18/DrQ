@@ -67,7 +67,7 @@ tensorboard --logdir src/SAC/drq_22/runs
 
 ---
 
-To run the DQN version algorithms type the command shown below in the terminal. To alter dqn implementations set the variable mode='default' in the main.py file to run 
+To run the DQN version algorithms type the command shown below in the terminal. To alter dqn implementations set the variable mode='Baseline' in the main.py file to run 
 the standard NDDDQN. Alternatively set mode='DrQ' to run the DrQ regularized version of NDDDQN.
 ```python
 python src/dqn/main.py
