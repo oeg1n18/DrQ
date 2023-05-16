@@ -194,19 +194,19 @@ class Agent():
         indices = np.arange(self.batch_size)
 
         ##REMOVE THIS - DrQ
-        if self.mode == "Baseline":
+        if self.mode == "Baseline" or self.mode == "BaselineSplit":
             states_aug = states
             states_aug_ = states_
-        elif self.mode == "DrQ":
+        elif self.mode == "DrQ" or self.mode == "DrQSplit" or self.mode == "DrQAction":
             states_aug = self.intensity(self.random_shift(states.float())).to(T.uint8)
             states_aug_ = self.intensity(self.random_shift(states_.float())).to(T.uint8)
-        ##########
+            states_aug_policy_ = self.intensity(self.random_shift(states_.float())).to(T.uint8)
 
         V_s, A_s = self.q_eval.forward(states_aug)
 
         V_s_, A_s_ = self.q_next.forward(states_aug_)
 
-        V_s_eval, A_s_eval = self.q_eval.forward(states_aug_)
+        V_s_eval, A_s_eval = self.q_eval.forward(states_aug_policy_)
 
         q_pred = T.add(V_s,
                        (A_s - A_s.mean(dim=1, keepdim=True)))[indices, actions]
